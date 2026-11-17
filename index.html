@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meia-noite na Nova Zelândia</title>
+<style>
+  :root {
+    --bg: #eef3f1;
+    --ink: #12303a;
+    --muted: #5b7680;
+    --line: #c9d8d4;
+    --accent: #1f7a6d;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1a1f;
+      --ink: #e3eeeb;
+      --muted: #8fa8a8;
+      --line: #23383d;
+      --accent: #5fd0b8;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    padding: 8vh 1.5rem 4rem;
+  }
+  main { width: 100%; max-width: 640px; }
+  h1 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 0 0 0.5rem;
+  }
+  .countdown {
+    font-size: clamp(3.2rem, 17vw, 7rem);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    margin: 0 0 2.5rem;
+  }
+  .horizon { margin: 0 0 3rem; }
+  .track {
+    position: relative;
+    height: 2px;
+    background: var(--line);
+    margin: 0.75rem 0;
+  }
+  .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background: var(--accent);
+  }
+  .dot {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 12px; height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+  .ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+  .clocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+  }
+  .clocks dt { font-size: 0.875rem; color: var(--muted); }
+  .clocks dd { margin: 0.25rem 0 0; }
+  .time {
+    font-size: 1.75rem;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+  }
+  .date { font-size: 0.875rem; color: var(--muted); }
+  .note { margin-top: 3rem; font-size: 0.875rem; color: var(--muted); max-width: 52ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Faltam para a meia-noite em Auckland</h1>
+  <div class="countdown" id="countdown" role="timer" aria-live="off">00:00:00</div>
+
+  <div class="horizon">
+    <div class="ends"><span>00:00</span><span id="pct">0% do dia</span><span>24:00</span></div>
+    <div class="track" role="progressbar" aria-label="Progresso do dia na Nova Zelândia" aria-valuemin="0" aria-valuemax="100" id="track">
+      <div class="fill" id="fill"></div>
+      <div class="dot" id="dot"></div>
+    </div>
+  </div>
+
+  <dl class="clocks">
+    <div>
+      <dt>Agora na Nova Zelândia</dt>
+      <dd><div class="time" id="nz-time">--:--:--</div><div class="date" id="nz-date">&nbsp;</div></dd>
+    </div>
+    <div>
+      <dt>Agora no seu horário</dt>
+      <dd><div class="time" id="local-time">--:--:--</div><div class="date" id="local-date">&nbsp;</div></dd>
+    </div>
+  </dl>
+
+  <p class="note">O horário da Nova Zelândia usa o fuso Pacific/Auckland, então a mudança entre horário de verão e de inverno é aplicada automaticamente.</p>
+</main>
+
+<script>
+  const NZ = "Pacific/Auckland";
+  const LOCAL = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const pad = n => String(n).padStart(2, "0");
+
+  function parts(tz) {
+    const fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    const o = {};
+    fmt.formatToParts(new Date()).forEach(p => { o[p.type] = p.value; });
+    if (o.hour === "24") o.hour = "00";
+    return o;
+  }
+
+  const el = id => document.getElementById(id);
+
+  function tick() {
+    const nz = parts(NZ);
+    const loc = parts(LOCAL);
+
+    const elapsed = (+nz.hour) * 3600 + (+nz.minute) * 60 + (+nz.second);
+    const left = 86400 - elapsed;
+    const text = pad(Math.floor(left / 3600)) + ":" + pad(Math.floor((left % 3600) / 60)) + ":" + pad(left % 60);
+
+    el("countdown").textContent = text;
+    document.title = text + " · Meia-noite na Nova Zelândia";
+
+    const pct = elapsed / 86400 * 100;
+    el("fill").style.width = pct + "%";
+    el("dot").style.left = pct + "%";
+    el("pct").textContent = Math.round(pct) + "% do dia";
+    el("track").setAttribute("aria-valuenow", Math.round(pct));
+
+    el("nz-time").textContent = nz.hour + ":" + nz.minute + ":" + nz.second;
+    el("nz-date").textContent = nz.day + "/" + nz.month + "/" + nz.year;
+    el("local-time").textContent = loc.hour + ":" + loc.minute + ":" + loc.second;
+    el("local-date").textContent = loc.day + "/" + loc.month + "/" + loc.year;
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>
